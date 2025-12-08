@@ -38,7 +38,26 @@
       "eslint"
     ],
     "**/lwc/**": [
-        "sfdx-lwc-jest -- --bail --findRelatedTests --passWithNoTests"
+      "sfdx-lwc-jest -- --bail --findRelatedTests --passWithNoTests"
     ]
+  },
+  "main": "eslint.config.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vinodsalesforce1992/Agentforce.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/vinodsalesforce1992/Agentforce/issues"
+  },
+  "homepage": "https://github.com/vinodsalesforce1992/Agentforce#readme",
+  "dependencies": {
+    "dotenv": "^17.2.3"
   }
 }
