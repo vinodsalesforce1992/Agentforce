@@ -1,279 +1,195 @@
-require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
-const https = require('https');
+require("dotenv").config();
+const fs = require("fs");
+const path = require("path");
+const https = require("https");
 
-// Configuration
+// --- Configuration ---
 const JIRA_BASE_URL = process.env.JIRA_BASE_URL;
 const JIRA_EMAIL = process.env.JIRA_EMAIL;
 const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN;
+const AC_FIELD_ID = "customfield_10042"; // Verify this ID matches your Jira
 
-// Parse arguments
+// --- Arguments ---
 const args = process.argv.slice(2).reduce((acc, kv) => {
-    const [k, ...rest] = kv.split('=');
-    acc[k] = rest.join('=');
-    return acc;
+  const [k, ...rest] = kv.split("=");
+  acc[k] = rest.join("=");
+  return acc;
 }, {});
 
-const EPIC_KEY = args.EPIC || process.env.EPIC;
+const KEY = args.KEY || process.env.KEY;
 
-if (!EPIC_KEY) {
-    console.error('❌ Missing EPIC. Usage: node scripts/generate-epic-requirement.js EPIC=DEMO-1');
-    process.exit(1);
+if (!KEY) {
+  console.error(
+    "❌ Error: Missing KEY. Usage: node scripts/generate-epic-requirement.js KEY=DEMO-123"
+  );
+  process.exit(1);
 }
 
-if (!JIRA_BASE_URL || !JIRA_EMAIL || !JIRA_API_TOKEN) {
-    console.error('❌ Missing Jira credentials');
-    process.exit(1);
+if (!fs.existsSync(".env")) {
+  console.error("❌ Error: .env file missing. Cannot connect to Jira.");
+  process.exit(1);
 }
 
-// Function to call Jira API
-function jiraRequest(path) {
-    return new Promise((resolve, reject) => {
-        const auth = Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString('base64');
-        const url = new URL(path, JIRA_BASE_URL);
-        
-        const options = {
-            hostname: url.hostname,
-            path: url.pathname + url.search,
-            method: 'GET',
-            headers: {
-                'Authorization': `Basic ${auth}`,
-                'Accept': 'application/json'
-            }
-        };
+// --- Helpers ---
 
-        const req = https.request(options, (res) => {
-            let data = '';
-            res.on('data', (chunk) => { data += chunk; });
-            res.on('end', () => {
-                if (res.statusCode === 200) {
-                    resolve(JSON.parse(data));
-                } else {
-                    reject(new Error(`Jira API error: ${res.statusCode} - ${data}`));
-                }
-            });
-        });
+// Unified Request Helper
+function jiraRequest(apiPath, method = "GET", body = null) {
+  return new Promise((resolve, reject) => {
+    const auth = Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString(
+      "base64"
+    );
+    const url = new URL(apiPath, JIRA_BASE_URL);
 
-        req.on('error', reject);
-        req.end();
+    const options = {
+      hostname: url.hostname,
+      path: url.pathname + url.search,
+      method: method,
+      headers: {
+        Authorization: `Basic ${auth}`,
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(new Error(`Failed to parse JSON response: ${data}`));
+          }
+        } else {
+          reject(new Error(`Jira API Error ${res.statusCode}: ${data}`));
+        }
+      });
     });
-}
 
-// Get Epic Link field ID dynamically
-async function getEpicLinkFieldId() {
-    try {
-        const fields = await jiraRequest('/rest/api/3/field');
-        const epicLinkField = fields.find(f => f.name === 'Epic Link');
-        return epicLinkField ? epicLinkField.id : null;
-    } catch (e) {
-        console.log('Could not fetch Epic Link field:', e.message);
-        return null;
+    req.on("error", (error) => reject(error));
+
+    if (body) {
+      req.write(JSON.stringify(body));
     }
+    req.end();
+  });
 }
 
-// Search with pagination
-async function searchAllIssues(jql) {
-    let allIssues = [];
-    let startAt = 0;
-    const maxResults = 100;
-    let total = 0;
-    
-    do {
-        const encodedJql = encodeURIComponent(jql);
-        const result = await jiraRequest(`/rest/api/3/search/jql?jql=${encodedJql}&startAt=${startAt}&maxResults=${maxResults}`);
-        
-        allIssues = allIssues.concat(result.issues || []);
-        total = result.total;
-        startAt += maxResults;
-        
-    } while (startAt < total);
-    
-    return allIssues;
-}
-
-// Extract text from Jira format
 function extractText(obj) {
-    if (!obj) return '';
-    if (typeof obj === 'string') return obj;
-    if (obj.type === 'text') return obj.text || '';
-    if (obj.content) {
-        return obj.content.map(extractText).join('\n');
-    }
-    return '';
+  if (!obj) return "";
+  if (typeof obj === "string") return obj;
+  if (obj.type === "text") return obj.text || "";
+  if (obj.content) return obj.content.map(extractText).join("\n");
+  return "";
 }
 
-// Main function
-async function generateEpicRequirement() {
-    console.log(`🔍 Fetching Epic: ${EPIC_KEY}...`);
-    
-    try {
-        // Fetch epic
-        const epic = await jiraRequest(`/rest/api/3/issue/${EPIC_KEY}`);
-        const epicFields = epic.fields;
-        
-        // Get epic's child issues - try multiple JQL approaches
-        console.log(`🔍 Fetching stories under ${EPIC_KEY}...`);
-        
-        let stories = [];
-        let jqlUsed = '';
-        
-        // Try 1: Team-managed project (parentEpic)
-        try {
-            jqlUsed = `parentEpic = "${EPIC_KEY}" ORDER BY created ASC`;
-            console.log(`Trying: ${jqlUsed}`);
-            stories = await searchAllIssues(jqlUsed);
-            if (stories.length > 0) {
-                console.log(`✅ Success with parentEpic field`);
-                console.log('DEBUG: Stories found:');
-                stories.forEach(s => console.log(`  - ${s.key}: ${s.fields?.summary || 'No summary'} (Type: ${s.fields?.issuetype?.name})`));
-            }
-        } catch (e) {
-            console.log(`parentEpic failed: ${e.message}`);
-        }
-        
-        // Try 2: Company-managed project (Epic Link)
-        if (stories.length === 0) {
-            try {
-                jqlUsed = `"Epic Link" = ${EPIC_KEY} ORDER BY created ASC`;
-                console.log(`Trying: ${jqlUsed}`);
-                stories = await searchAllIssues(jqlUsed);
-                if (stories.length > 0) {
-                    console.log(`✅ Success with "Epic Link" field`);
-                    console.log('DEBUG: Stories found:');
-                    stories.forEach(s => console.log(`  - ${s.key}: ${s.fields?.summary || 'No summary'} (Type: ${s.fields?.issuetype?.name})`));
-                }
-            } catch (e) {
-                console.log(`"Epic Link" failed: ${e.message}`);
-            }
-        }
-        
-        // Try 3: Company-managed with custom field ID
-        if (stories.length === 0) {
-            const epicLinkFieldId = await getEpicLinkFieldId();
-            if (epicLinkFieldId) {
-                try {
-                    jqlUsed = `${epicLinkFieldId} = ${EPIC_KEY} ORDER BY created ASC`;
-                    console.log(`Trying: ${jqlUsed}`);
-                    stories = await searchAllIssues(jqlUsed);
-                    if (stories.length > 0) {
-                        console.log(`✅ Success with custom field ${epicLinkFieldId}`);
-                        console.log('DEBUG: Stories found:');
-                        stories.forEach(s => console.log(`  - ${s.key}: ${s.fields?.summary || 'No summary'} (Type: ${s.fields?.issuetype?.name})`));
-                    }
-                } catch (e) {
-                    console.log(`Custom field search failed: ${e.message}`);
-                }
-            }
-        }
-        
-        // Filter out the epic itself
-        const originalCount = stories.length;
-        stories = stories.filter(s => s.key !== EPIC_KEY && s.fields?.issuetype?.name !== 'Epic');
-        console.log(`✅ Found ${originalCount} total, ${stories.length} stories after filtering out epics`);
-        
-        // Build markdown content
-        let content = `---
-key: ${EPIC_KEY}
+function formatIssueMarkdown(issue, isChild = false) {
+  const fields = issue.fields;
+  const summary = fields.summary || "";
+  const description =
+    extractText(fields.description) || "No description provided.";
+  const ac =
+    extractText(fields[AC_FIELD_ID]) || "TODO: Add acceptance criteria";
+  const status = fields.status?.name || "To Do";
+  const priority = fields.priority?.name || "Medium";
+  const type = fields.issuetype?.name || "Story";
+
+  const headerPrefix = isChild ? "##" : "#";
+
+  return `
+${headerPrefix} [${issue.key}] ${summary}
+**Type:** ${type} | **Status:** ${status} | **Priority:** ${priority}
+
+### Description
+${description}
+
+### Acceptance Criteria
+${ac}
+
+### Technical Notes
+- [ ] Validated against ${issue.key}
+---
+`;
+}
+
+// --- Main Execution ---
+
+async function generateEpicDoc() {
+  console.log(`🔍 Fetching Epic: ${KEY}...`);
+
+  try {
+    // 1. Fetch the Epic itself
+    const epicIssue = await jiraRequest(`/rest/api/3/issue/${KEY}`, "GET");
+
+    // 2. Fetch Child Issues (Using the specific JQL endpoint)
+    console.log(`👨‍👧‍👦 Finding child stories for ${KEY}...`);
+
+    const searchBody = {
+      jql: `parent = "${KEY}" ORDER BY key ASC`,
+      maxResults: 50,
+      fields: [
+        "summary",
+        "description",
+        "status",
+        "priority",
+        "issuetype",
+        AC_FIELD_ID
+      ]
+    };
+
+    // FIXED: Pointing to /rest/api/3/search/jql as requested by the error
+    const searchResults = await jiraRequest(
+      "/rest/api/3/search/jql",
+      "POST",
+      searchBody
+    );
+    const children = searchResults.issues || [];
+
+    console.log(`✅ Found ${children.length} child issues.`);
+
+    // 3. Construct File Content
+    let fileContent = `---
+key: ${KEY}
 type: Epic
-status: ${epicFields.status?.name || 'In Progress'}
-stories: ${stories.length}
+child_count: ${children.length}
+status: ${epicIssue.fields.status?.name}
+generated: ${new Date().toISOString()}
 ---
 
-# Epic: ${epicFields.summary}
+# EPIC: ${extractText(epicIssue.fields.summary)}
 
-## Epic Description
-${extractText(epicFields.description) || 'No description'}
+> **Epic Context**
+> ${extractText(epicIssue.fields.description)}
 
-## Business Value
-${extractText(epicFields.customfield_10042) || 'TODO: Add business value'}
-
-## Stories in This Epic
-
-Total Stories: ${stories.length}
-
-`;
-
-        // Add each story
-        for (const story of stories) {
-            // Handle different response structures
-            const fields = story.fields || story;
-            const storyKey = story.key || story.id;
-            
-            // Fetch full story details if needed
-            let fullStory = story;
-            if (!fields.summary) {
-                console.log(`Fetching details for ${storyKey}...`);
-                fullStory = await jiraRequest(`/rest/api/3/issue/${storyKey}`);
-            }
-            
-            const storyFields = fullStory.fields || fields;
-            
-            content += `
 ---
-
-### ${storyKey}: ${storyFields.summary || 'No title'}
-
-**Status:** ${storyFields.status?.name || 'To Do'} | **Priority:** ${storyFields.priority?.name || 'Medium'}
-
-**Description:**
-${extractText(storyFields.description) || 'No description'}
-
-**Acceptance Criteria:**
-${extractText(storyFields.customfield_10042) || 'No acceptance criteria'}
-
 `;
-        }
-        
-        // Add summary section
-        content += `
----
 
-## Epic Summary
-
-**Total Stories:** ${stories.length}
-
-`;
-        
-        if (stories.length > 0) {
-            // Count by status
-            const statusCounts = {};
-            stories.forEach(s => {
-                const status = s.fields?.status?.name || 'Unknown';
-                statusCounts[status] = (statusCounts[status] || 0) + 1;
-            });
-            
-            content += `**Stories by Status:**
-`;
-            Object.entries(statusCounts).forEach(([status, count]) => {
-                content += `- ${status}: ${count}\n`;
-            });
-            
-            content += `
-**Story List:**
-`;
-            stories.forEach(s => {
-                content += `- ${s.key}: ${s.fields?.summary || 'No title'}\n`;
-            });
-        }
-        
-        // Write file
-        const outDir = path.join('docs', 'requirements');
-        const outFile = path.join(outDir, `${EPIC_KEY}-epic.md`);
-        
-        fs.mkdirSync(outDir, { recursive: true });
-        fs.writeFileSync(outFile, content, 'utf8');
-        
-        console.log(`✅ Created epic requirement file: ${outFile}`);
-        console.log(`📋 Epic: ${epicFields.summary}`);
-        console.log(`📊 Stories: ${stories.length}`);
-        
-    } catch (error) {
-        console.error('❌ Error:', error.message);
-        console.error('Stack:', error.stack);
-        process.exit(1);
+    if (children.length > 0) {
+      fileContent += `\n# CHILD REQUIREMENTS (${children.length})\n`;
+      for (const child of children) {
+        fileContent += formatIssueMarkdown(child, true);
+      }
+    } else {
+      fileContent += `\n> *No child stories found linked to this Epic.*\n`;
     }
+
+    // 4. Write to File
+    const outDir = path.join("docs", "requirements");
+    const outFile = path.join(outDir, `${KEY}.md`);
+
+    if (!fs.existsSync(outDir)) {
+      fs.mkdirSync(outDir, { recursive: true });
+    }
+
+    fs.writeFileSync(outFile, fileContent, "utf8");
+
+    console.log(`🎉 Success! Generated Consolidated Requirement Doc:`);
+    console.log(`📄 ${outFile}`);
+  } catch (error) {
+    console.error("❌ Failed:", error.message);
+    process.exit(1);
+  }
 }
 
-// Run
-generateEpicRequirement();
+generateEpicDoc();
