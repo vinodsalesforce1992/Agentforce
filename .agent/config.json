@@ -1,0 +1,23 @@
+{
+  "requirementDir": "docs/requirements",
+  "reportDir": "docs/reviews",
+  "jiraKeyRegex": "\\b[A-Z][A-Z0-9]+-\\d+\\b",
+  "includeGlobs": [
+    "**/*.cls",
+    "**/*.trigger",
+    "**/*.js",
+    "**/*.html",
+    "**/*.css",
+    "**/*.xml",
+    "**/*.json",
+    "**/*.object",
+    "**/*.field"
+  ],
+  "excludeGlobs": [
+    "**/node_modules/**",
+    "**/.sfdx/**",
+    "**/.sf/**",
+    "**/dist/**",
+    "**/.git/**"
+  ]
+}

@@ -1,0 +1,122 @@
+name: DEMO Review Workflow
+on:
+  workflow_dispatch:
+    inputs:
+      jira_story:
+        description: "Jira Story ID (e.g., DEMO-1)"
+        required: true
+        type: string
+      branch:
+        description: "Branch to review"
+        required: false
+        type: string
+        default: "release"
+
+jobs:
+  review-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || 'release' }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Dependencies
+        run: |
+          npm ci
+
+      - name: Run Demo Review
+        env:
+          JIRA_STORY: ${{ github.event.inputs.jira_story }}
+        run: |
+          echo "Starting review for Jira Story: $JIRA_STORY"
+          echo "Current branch: ${{ github.event.inputs.branch || 'release' }}"
+
+          # Create a temporary script to run our review logic
+          cat > temp_review.js << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+
+          // Read the requirements file for the specified story
+          const storyId = process.env.JIRA_STORY || 'DEMO-1';
+          const requirementsPath = `docs/requirements/${storyId}.md`;
+
+          if (fs.existsSync(requirementsPath)) {
+            console.log(`✅ Found requirements for ${storyId}`);
+            const requirementsContent = fs.readFileSync(requirementsPath, 'utf8');
+            
+            // Extract key information from requirements
+            const titleMatch = requirementsContent.match(/# (.+)/);
+            const summaryMatch = requirementsContent.match(/## Summary\s+(.+?)(?=\n## |\n$)/s);
+            
+            console.log(`📝 Title: ${titleMatch ? titleMatch[1] : 'N/A'}`);
+            console.log(`📋 Summary: ${summaryMatch ? summaryMatch[1].trim() : 'N/A'}`);
+            
+            // Check for existing fields
+            const accountFieldsPath = 'force-app/main/default/objects/Account/fields';
+            const portfolioFieldsPath = 'force-app/main/default/objects/Portfolio_Position__c/fields';
+            
+            const accountFields = fs.readdirSync(accountFieldsPath);
+            const portfolioFields = fs.readdirSync(portfolioFieldsPath);
+            
+            console.log('\n📊 Account Fields Found:');
+            accountFields.forEach(field => {
+              console.log(`  - ${field.replace('.field-meta.xml', '')}`);
+            });
+            
+            console.log('\n📊 Portfolio Position Fields Found:');
+            portfolioFields.forEach(field => {
+              console.log(`  - ${field.replace('.field-meta.xml', '')}`);
+            });
+            
+            // Check for existing components
+            const lwcComponents = fs.readdirSync('force-app/main/default/lwc');
+            console.log('\n🔧 Existing LWC Components:');
+            lwcComponents.forEach(comp => {
+              console.log(`  - ${comp}`);
+            });
+            
+            // Check for existing Apex classes
+            const apexClasses = fs.readdirSync('force-app/main/default/classes');
+            console.log('\n⚡ Existing Apex Classes:');
+            apexClasses.forEach(cls => {
+              console.log(`  - ${cls}`);
+            });
+            
+            console.log('\n✅ Review completed successfully!');
+          } else {
+            console.log(`❌ Requirements file not found for ${storyId}`);
+            process.exit(1);
+          }
+          EOF
+
+          # Run the review script
+          node temp_review.js
+
+          # Clean up
+          rm temp_review.js
+
+      - name: Generate Review Report
+        run: |
+          echo "Review Report for ${{ github.event.inputs.jira_story }}" > review-report.md
+          echo "==========================" >> review-report.md
+          echo "" >> review-report.md
+          echo "## Summary" >> review-report.md
+          echo "This workflow automates the review process for Jira stories." >> review-report.md
+          echo "" >> review-report.md
+          echo "## Status" >> review-report.md
+          echo "✅ Review completed successfully" >> review-report.md
+          echo "" >> review-report.md
+          echo "## Generated Report" >> review-report.md
+          echo "Review report generated for ${{ github.event.inputs.jira_story }}" >> review-report.md
+
+      - name: Upload Review Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-report
+          path: review-report.md

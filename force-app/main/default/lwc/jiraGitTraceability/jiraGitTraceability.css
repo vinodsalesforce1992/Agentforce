@@ -1,0 +1,61 @@
+.slds-box {
+    background: #ffffff;
+    border: 1px solid #dddbda;
+    border-radius: 0.25rem;
+    padding: 1rem;
+}
+
+.slds-box_x-small {
+    padding: 0.5rem;
+}
+
+dl.slds-list_horizontal {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.5rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.slds-item_label {
+    font-weight: bold;
+    color: #3e3e3c;
+}
+
+.slds-item_detail {
+    color: #080707;
+}
+
+.slds-text-heading_medium {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #080707;
+}
+
+.slds-text-color_weak {
+    color: #706e6b;
+    white-space: pre-wrap;
+}
+
+lightning-card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.slds-m-top_small {
+    margin-top: 0.75rem;
+}
+
+.slds-m-bottom_small {
+    margin-bottom: 0.75rem;
+}
+
+.slds-m-bottom_medium {
+    margin-bottom: 1rem;
+}
+
+.slds-m-bottom_x-small {
+    margin-bottom: 0.5rem;
+}
+
+.slds-p-around_medium {
+    padding: 1rem;
+}
