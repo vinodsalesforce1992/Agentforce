@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Traceability Review Report: DEMO-10</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f9f9f9;
+        color: #333;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #2c3e50;
+      }
+      .section {
+        background-color: white;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.9em;
+        font-weight: bold;
+      }
+      .badge.met {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .badge.partial {
+        background-color: #fff3cd;
+        color: #856404;
+      }
+      .badge.missing {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      .badge.critical {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      .badge.high {
+        background-color: #fff3cd;
+        color: #856404;
+      }
+      .badge.medium {
+        background-color: #cce5ff;
+        color: #004085;
+      }
+      .badge.low {
+        background-color: #d1ecf1;
+        color: #0c5460;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+      tr:nth-child(even) {
+        background-color: #f9f9f9;
+      }
+      .summary-cards {
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+      }
+      .card {
+        text-align: center;
+        padding: 15px;
+        margin: 10px;
+        border-radius: 5px;
+        flex: 1;
+        min-width: 150px;
+      }
+      .card.met {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .card.partial {
+        background-color: #fff3cd;
+        color: #856404;
+      }
+      .card.missing {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      .card.unlinked {
+        background-color: #fff3cd;
+        color: #856404;
+      }
+      .card.ghost {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      .card.critical {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      .card.high {
+        background-color: #fff3cd;
+        color: #856404;
+      }
+      .card.medium {
+        background-color: #cce5ff;
+        color: #004085;
+      }
+      .card.low {
+        background-color: #d1ecf1;
+        color: #0c5460;
+      }
+      .card.coverage {
+        background-color: #d1ecf1;
+        color: #0c5460;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="section">
+      <h1>Traceability Review Report: DEMO-10</h1>
+      <p><strong>Generated:</strong> 2025-12-14 16:16:05</p>
+      <p><strong>Reviewer:</strong> T.R.A.C.E.</p>
+      <p><strong>Current Branch:</strong> feature/DEMO-10-task-priority</p>
+      <p><strong>Target Branch:</strong> release</p>
+      <p><strong>Total Files Analyzed:</strong> 15</p>
+    </div>
+
+    <div class="section">
+      <h2>Executive Summary</h2>
+      <p>
+        <strong>Overall Status:</strong>
+        <span class="badge missing">Needs Work</span>
+      </p>
+      <p><strong>Forward Trace:</strong> 2/6 requirements met (2 partial)</p>
+      <p><strong>Backward Trace:</strong> 2 unlinked components</p>
+      <p><strong>Code Quality:</strong> 4 critical issues, 2 high issues</p>
+      <p><strong>Test Coverage:</strong> 0% requirement coverage</p>
+      <p><strong>Top Critical Issues:</strong></p>
+      <ul>
+        <li>SOQL in loop (TaskItemReminderScheduler.cls)</li>
+        <li>Email in loop (TaskItemReminderScheduler.cls)</li>
+        <li>No custom setting check (TaskItemReminderScheduler.cls)</li>
+        <li>Hardcoded strings (TaskItemReminderScheduler.cls)</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Forward Trace Analysis</h2>
+      <div class="summary-cards">
+        <div class="card met">Met: 2</div>
+        <div class="card partial">Partial: 2</div>
+        <div class="card missing">Missing: 2</div>
+      </div>
+
+      <h3>Requirements by Story</h3>
+
+      <h4>Story DEMO-11: Add Priority Field and Color Coding to Tasks</h4>
+      <table>
+        <tr>
+          <th>AC #</th>
+          <th>Requirement</th>
+          <th>Status</th>
+          <th>Evidence</th>
+          <th>Gap Details</th>
+        </tr>
+        <tr>
+          <td>1</td>
+          <td>Add Priority field to Task object</td>
+          <td><span class="badge partial">PARTIAL</span></td>
+          <td>Field Priority__c exists with picklist values</td>
+          <td>Default value is not Medium, Required field is not set</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Add Due Date Indicator field to Task</td>
+          <td><span class="badge partial">PARTIAL</span></td>
+          <td>Field Due_Date_Indicator__c exists</td>
+          <td>Formula logic is incomplete (missing "Due Soon" condition)</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>Create Lightning Web Component for task list</td>
+          <td><span class="badge missing">MISSING</span></td>
+          <td>Not implemented</td>
+          <td>LWC component not found</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>Add Task Priority field to Task page layout</td>
+          <td><span class="badge met">MET</span></td>
+          <td>Field Priority__c is visible on layout</td>
+          <td></td>
+        </tr>
+      </table>
+
+      <h4>Story DEMO-12: Send Email Reminders for Urgent Tasks</h4>
+      <table>
+        <tr>
+          <th>AC #</th>
+          <th>Requirement</th>
+          <th>Status</th>
+          <th>Evidence</th>
+          <th>Gap Details</th>
+        </tr>
+        <tr>
+          <td>1</td>
+          <td>Create email template for task reminders</td>
+          <td><span class="badge met">MET</span></td>
+          <td>Email template exists</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Apex scheduled job runs daily at 8 AM</td>
+          <td><span class="badge missing">MISSING</span></td>
+          <td>Scheduled job exists but implementation is incomplete</td>
+          <td>SOQL in loop, Email in loop, no grouped sending</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>Custom setting to enable/disable reminders</td>
+          <td><span class="badge missing">MISSING</span></td>
+          <td>Custom setting exists but not checked in code</td>
+          <td>Code doesn't check Enable_Daily_Reminders__c</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>Test class with 85% coverage</td>
+          <td><span class="badge missing">MISSING</span></td>
+          <td>No test class found</td>
+          <td>Test class not implemented</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>Backward Trace Analysis</h2>
+      <div class="summary-cards">
+        <div class="card met">Mapped: 1</div>
+        <div class="card unlinked">Unlinked: 2</div>
+        <div class="card ghost">Ghost Code: 0</div>
+      </div>
+
+      <h3>Mapped Components</h3>
+      <ul>
+        <li>Task_Item__c object (used in requirements)</li>
+      </ul>
+
+      <h3>Unlinked Components</h3>
+      <table>
+        <tr>
+          <th>File</th>
+          <th>Type</th>
+          <th>Logic</th>
+          <th>Action Required</th>
+        </tr>
+        <tr>
+          <td>TaskItemPriorityHelper.cls</td>
+          <td>Apex Class</td>
+          <td>
+            Contains helper methods for priority color coding and fetching high
+            priority tasks
+          </td>
+          <td>Update requirements to include this component</td>
+        </tr>
+        <tr>
+          <td>TaskItemReminderBatch.cls</td>
+          <td>Apex Class</td>
+          <td>Contains batch class implementation</td>
+          <td>Update requirements to include this component</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>Code Quality Analysis</h2>
+      <div class="summary-cards">
+        <div class="card critical">Critical: 4</div>
+        <div class="card high">High: 2</div>
+        <div class="card medium">Medium: 2</div>
+        <div class="card low">Low: 1</div>
+      </div>
+
+      <h3>Critical Issues</h3>
+      <table>
+        <tr>
+          <th>File</th>
+          <th>Issue</th>
+          <th>Line</th>
+          <th>Description</th>
+        </tr>
+        <tr>
+          <td>TaskItemReminderScheduler.cls</td>
+          <td>SOQL in Loop</td>
+          <td>17</td>
+          <td>SOQL query inside a loop - violates governor limits</td>
+        </tr>
+        <tr>
+          <td>TaskItemReminderScheduler.cls</td>
+          <td>Email in Loop</td>
+          <td>24</td>
+          <td>Email sending inside a loop - violates governor limits</td>
+        </tr>
+        <tr>
+          <td>TaskItemReminderScheduler.cls</td>
+          <td>Missing Custom Setting Check</td>
+          <td>14</td>
+          <td>
+            Does not check Enable_Daily_Reminders__c before sending emails
+          </td>
+        </tr>
+        <tr>
+          <td>TaskItemReminderScheduler.cls</td>
+          <td>Hardcoded Strings</td>
+          <td>27, 28</td>
+          <td>Hardcoded email subject and body instead of using template</td>
+        </tr>
+      </table>
+
+      <h3>High Issues</h3>
+      <table>
+        <tr>
+          <th>File</th>
+          <th>Issue</th>
+          <th>Line</th>
+          <th>Description</th>
+        </tr>
+        <tr>
+          <td>TaskItemReminderScheduler.cls</td>
+          <td>No Error Handling</td>
+          <td>24</td>
+          <td>No try-catch around Messaging.sendEmail()</td>
+        </tr>
+        <tr>
+          <td>TaskItemReminderScheduler.cls</td>
+          <td>Missing Class Documentation</td>
+          <td>1</td>
+          <td>Class lacks header comments</td>
+        </tr>
+      </table>
+
+      <h3>Medium Issues</h3>
+      <table>
+        <tr>
+          <th>File</th>
+          <th>Issue</th>
+          <th>Line</th>
+          <th>Description</th>
+        </tr>
+        <tr>
+          <td>TaskItemReminderScheduler.cls</td>
+          <td>System.debug Statement</td>
+          <td>5</td>
+          <td>Debug statement should be removed before production</td>
+        </tr>
+        <tr>
+          <td>TaskItemPriorityHelper.cls</td>
+          <td>Missing Class Documentation</td>
+          <td>1</td>
+          <td>Class lacks header comments</td>
+        </tr>
+      </table>
+
+      <h3>Low Issues</h3>
+      <ul>
+        <li>TaskItemReminderBatch.cls: Long method (>100 lines)</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Test Coverage Analysis</h2>
+      <div class="summary-cards">
+        <div class="card coverage">Code Coverage: 0%</div>
+        <div class="card coverage">Requirement Coverage: 0%</div>
+        <div class="card coverage">Scenario Coverage: 0%</div>
+      </div>
+
+      <h3>Requirement-Based Coverage</h3>
+      <table>
+        <tr>
+          <th>Requirement</th>
+          <th>Test Coverage</th>
+          <th>Notes</th>
+        </tr>
+        <tr>
+          <td>DEMO-11 AC 1: Add Priority field</td>
+          <td><span class="badge missing">NOT COVERED</span></td>
+          <td>No test class found</td>
+        </tr>
+        <tr>
+          <td>DEMO-11 AC 2: Add Due Date Indicator</td>
+          <td><span class="badge missing">NOT COVERED</span></td>
+          <td>No test class found</td>
+        </tr>
+        <tr>
+          <td>DEMO-11 AC 3: Create LWC</td>
+          <td><span class="badge missing">NOT COVERED</span></td>
+          <td>No test class found</td>
+        </tr>
+        <tr>
+          <td>DEMO-11 AC 4: Add Priority to Layout</td>
+          <td><span class="badge missing">NOT COVERED</span></td>
+          <td>No test class found</td>
+        </tr>
+        <tr>
+          <td>DEMO-12 AC 1: Email Template</td>
+          <td><span class="badge missing">NOT COVERED</span></td>
+          <td>No test class found</td>
+        </tr>
+        <tr>
+          <td>DEMO-12 AC 2: Scheduled Job</td>
+          <td><span class="badge missing">NOT COVERED</span></td>
+          <td>No test class found</td>
+        </tr>
+        <tr>
+          <td>DEMO-12 AC 3: Custom Setting</td>
+          <td><span class="badge missing">NOT COVERED</span></td>
+          <td>No test class found</td>
+        </tr>
+        <tr>
+          <td>DEMO-12 AC 4: Test Class</td>
+          <td><span class="badge missing">NOT COVERED</span></td>
+          <td>No test class found</td>
+        </tr>
+      </table>
+
+      <h3>Test Recommendations</h3>
+      <ul>
+        <li>Create TaskItemReminderSchedulerTest.cls</li>
+        <li>Test SOQL in loop handling</li>
+        <li>Test email sending with grouped tasks</li>
+        <li>Test custom setting enable/disable behavior</li>
+        <li>Test with multiple users</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Files Analyzed</h2>
+      <p><strong>Total files:</strong> 15</p>
+      <p><strong>Successfully analyzed:</strong> 15</p>
+      <p><strong>Skipped:</strong> 0</p>
+      <p><strong>Files:</strong></p>
+      <ul>
+        <li>force-app/main/default/classes/TaskItemPriorityHelper.cls</li>
+        <li>
+          force-app/main/default/classes/TaskItemPriorityHelper.cls-meta.xml
+        </li>
+        <li>force-app/main/default/classes/TaskItemReminderBatch.cls</li>
+        <li>
+          force-app/main/default/classes/TaskItemReminderBatch.cls-meta.xml
+        </li>
+        <li>force-app/main/default/classes/TaskItemReminderScheduler.cls</li>
+        <li>
+          force-app/main/default/classes/TaskItemReminderScheduler.cls-meta.xml
+        </li>
+        <li>
+          force-app/main/default/email/unfiled$public/Task_Item_Reminder.email
+        </li>
+        <li>
+          force-app/main/default/email/unfiled$public/Task_Item_Reminder.email-meta.xml
+        </li>
+        <li>
+          force-app/main/default/layouts/Task_Item__c-Task Item
+          Layout.layout-meta.xml
+        </li>
+        <li>
+          force-app/main/default/objects/Task_Item__c/Task_Item__c.object-meta.xml
+        </li>
+        <li>
+          force-app/main/default/objects/Task_Item__c/fields/Comments__c.field-meta.xml
+        </li>
+        <li>
+          force-app/main/default/objects/Task_Item__c/fields/Due_Date_Indicator__c.field-meta.xml
+        </li>
+        <li>
+          force-app/main/default/objects/Task_Item__c/fields/Due_Date__c.field-meta.xml
+        </li>
+        <li>
+          force-app/main/default/objects/Task_Item__c/fields/Priority__c.field-meta.xml
+        </li>
+        <li>
+          force-app/main/default/objects/Task_Reminder_Settings__c/Task_Reminder_Settings__c.object-meta.xml
+        </li>
+        <li>
+          force-app/main/default/objects/Task_Reminder_Settings__c/fields/Enable_Daily_Reminders__c.field-meta.xml
+        </li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <p>Report generated by T.R.A.C.E.</p>
+    </div>
+  </body>
+</html>

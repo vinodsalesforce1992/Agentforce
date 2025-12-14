@@ -84,7 +84,32 @@ function extractText(obj) {
   return "";
 }
 
-function formatIssueMarkdown(issue, isChild = false) {
+// Function to fetch comments
+async function fetchComments(issueKey) {
+  try {
+    const comments = await jiraRequest(`/rest/api/3/issue/${issueKey}/comment`);
+    return comments.comments || [];
+  } catch (e) {
+    console.log(`⚠️  Could not fetch comments for ${issueKey}:`, e.message);
+    return [];
+  }
+}
+
+// Function to format comments section
+function formatCommentsSection(comments) {
+  if (comments.length === 0) return "";
+
+  let commentsSection = "\n### Comments from Jira\n\n";
+  comments.forEach((comment) => {
+    const author = comment.author?.displayName || "Unknown";
+    const created = comment.created ? comment.created.substring(0, 10) : "";
+    const body = extractText(comment.body) || "";
+    commentsSection += `**Comment by ${author} (${created}):**\n${body}\n\n`;
+  });
+  return commentsSection;
+}
+
+async function formatIssueMarkdown(issue, isChild = false) {
   const fields = issue.fields;
   const summary = fields.summary || "";
   const description =
@@ -97,6 +122,14 @@ function formatIssueMarkdown(issue, isChild = false) {
 
   const headerPrefix = isChild ? "##" : "#";
 
+  // Fetch comments for this issue
+  console.log(`  📝 Fetching comments for ${issue.key}...`);
+  const comments = await fetchComments(issue.key);
+  const commentsSection = formatCommentsSection(comments);
+  if (comments.length > 0) {
+    console.log(`  ✅ Found ${comments.length} comment(s) for ${issue.key}`);
+  }
+
   return `
 ${headerPrefix} [${issue.key}] ${summary}
 **Type:** ${type} | **Status:** ${status} | **Priority:** ${priority}
@@ -106,7 +139,7 @@ ${description}
 
 ### Acceptance Criteria
 ${ac}
-
+${commentsSection}
 ### Technical Notes
 - [ ] Validated against ${issue.key}
 ---
@@ -121,6 +154,14 @@ async function generateEpicDoc() {
   try {
     // 1. Fetch the Epic itself
     const epicIssue = await jiraRequest(`/rest/api/3/issue/${KEY}`, "GET");
+
+    // Fetch comments for the epic
+    console.log(`📝 Fetching comments for Epic ${KEY}...`);
+    const epicComments = await fetchComments(KEY);
+    const epicCommentsSection = formatCommentsSection(epicComments);
+    if (epicComments.length > 0) {
+      console.log(`✅ Found ${epicComments.length} comment(s) for Epic`);
+    }
 
     // 2. Fetch Child Issues (Using the specific JQL endpoint)
     console.log(`👨‍👧‍👦 Finding child stories for ${KEY}...`);
@@ -138,7 +179,6 @@ async function generateEpicDoc() {
       ]
     };
 
-    // FIXED: Pointing to /rest/api/3/search/jql as requested by the error
     const searchResults = await jiraRequest(
       "/rest/api/3/search/jql",
       "POST",
@@ -161,14 +201,14 @@ generated: ${new Date().toISOString()}
 
 > **Epic Context**
 > ${extractText(epicIssue.fields.description)}
-
+${epicCommentsSection}
 ---
 `;
 
     if (children.length > 0) {
       fileContent += `\n# CHILD REQUIREMENTS (${children.length})\n`;
       for (const child of children) {
-        fileContent += formatIssueMarkdown(child, true);
+        fileContent += await formatIssueMarkdown(child, true);
       }
     } else {
       fileContent += `\n> *No child stories found linked to this Epic.*\n`;
