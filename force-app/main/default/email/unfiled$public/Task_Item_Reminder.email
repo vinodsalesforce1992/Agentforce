@@ -1,0 +1,11 @@
+Hello,
+   
+   You have urgent task items that need attention:
+   
+   Task: {!Task_Item__c.Name}
+   Priority: {!Task_Item__c.Priority__c}
+   Due Date: {!Task_Item__c.Due_Date__c}
+   
+   Please review and complete these items.
+   
+   Thank you
