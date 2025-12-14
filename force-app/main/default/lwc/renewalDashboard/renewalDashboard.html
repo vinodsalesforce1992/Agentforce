@@ -1,0 +1,52 @@
+<template>
+  <lightning-card title="Upcoming Renewals" icon-name="standard:contract">
+    <template if:true={renewals}>
+      <table class="slds-table slds-table_bordered">
+        <thead>
+          <tr>
+            <th>Account Name</th>
+            <th>Expiration Date</th>
+            <th>Days Until Expiration</th>
+            <th>Health Score</th>
+            <th>Probability</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template for:each={renewals} for:item="renewal">
+            <tr key={renewal.Id}>
+              <td>{renewal.Name}</td>
+              <td>{renewal.Contract_Expiration_Date__c}</td>
+              <td>{renewal.daysUntilExpiration}</td>
+              <td>{renewal.Contract_Health_Score__c}</td>
+              <td>{renewal.Renewal_Probability__c}</td>
+              <td>
+                <template if:true={renewal.showGreen}>
+                  <lightning-icon
+                    icon-name="utility:success"
+                    alternative-text="Contacted"
+                    size="small"
+                    variant="success"
+                  >
+                  </lightning-icon>
+                </template>
+                <template if:true={renewal.showRed}>
+                  <lightning-icon
+                    icon-name="utility:warning"
+                    alternative-text="Urgent"
+                    size="small"
+                    variant="error"
+                  >
+                  </lightning-icon>
+                </template>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </template>
+    <template if:true={error}>
+      <div class="slds-text-color_error">{error}</div>
+    </template>
+  </lightning-card>
+</template>
