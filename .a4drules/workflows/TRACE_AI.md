@@ -15,14 +15,14 @@ Please select the type of Jira ticket we are validating:
 # Step 2: Request Jira ID
 
 <ask_followup_question>
-<question>Please enter the Jira ID (e.g., DEMO-10, PROJ-123):</question>
+<question>Please enter the Jira ID (e.g., DEMO-14, PROJ-123):</question>
 </ask_followup_question>
 
 ---
 
 # Step 3: Fetch Requirements from Jira
 
-Run the appropriate script:
+Run the appropriate script based on work item type:
 
 **If Story or Task:**
 
@@ -36,11 +36,11 @@ node scripts/generate-requirement.js KEY={JIRA_ID}
 node scripts/generate-epic-requirement.js KEY={JIRA_ID}
 ```
 
-Wait for script completion.
+Wait for the script to complete.
 
 ---
 
-# Step 4: Load and Parse Requirements
+# Step 4: Load Requirements File
 
 **Read the requirement file:** `docs/requirements/{JIRA_ID}.md`
 
@@ -61,50 +61,48 @@ What would you like to do?
 <options>["Retry with Different ID", "Cancel"]</options>
 </ask_followup_question>
 
-**If file found, parse the content:**
+**If file found, parse it:**
 
-**For Epic:** The file contains the epic description PLUS all child stories with their ACs. Extract:
+**For Epic:** Extract:
 
-- Epic context/description
-- List of ALL child story IDs
-- ALL acceptance criteria from ALL child stories
-- ALL comments from ALL stories
+- Epic description
+- All child story IDs
+- All acceptance criteria from all child stories
+- All comments from all stories
 
 **For Story/Task:** Extract:
 
 - Story summary
 - Acceptance Criteria (numbered list)
-- Comments section (additional requirements)
+- Comments section
 
-**Store all requirements with their story IDs for reference.**
+Store all requirements for analysis.
 
 ---
 
-# Step 5: Summarize Requirements
+# Step 5: Summarize and Confirm Requirements
 
 <ask_followup_question>
 <question>
-I have successfully fetched the requirements.
-
-**{JIRA_ID} Summary:**
+I have successfully fetched the requirements for **{JIRA_ID}**.
 
 {If Epic:}
 **Epic:** {Epic title}
 **Child Stories:** {List story IDs}
 
-{For each story or if single story:}
+{For each story:}
 **Story {ID}:** {Title}
 
 - Status: {Status}
 - Priority: {Priority}
 
 **Acceptance Criteria:**
-{List each AC with number and story ID reference}
+{List each AC with number}
 
-**Comments/Additional Requirements:**
-{List any comments with author and date}
+**Comments:**
+{List comments if any}
 
-**Total Requirements to Validate:** {count}
+**Total Requirements:** {count}
 
 Does this look correct?
 </question>
@@ -117,7 +115,7 @@ Does this look correct?
 
 # Step 6: Identify Git Context
 
-Run these commands **separately** (no chaining):
+Run these commands separately (no chaining with &&):
 
 **Command 1:**
 
@@ -125,7 +123,7 @@ Run these commands **separately** (no chaining):
 git rev-parse --abbrev-ref HEAD
 ```
 
-Store as `CURRENT_BRANCH`
+Store result as `CURRENT_BRANCH`
 
 **Command 2:**
 
@@ -133,7 +131,7 @@ Store as `CURRENT_BRANCH`
 git rev-parse --short HEAD
 ```
 
-Store as `CURRENT_COMMIT`
+Store result as `CURRENT_COMMIT`
 
 **Command 3:**
 
@@ -141,7 +139,7 @@ Store as `CURRENT_COMMIT`
 git merge-base HEAD release
 ```
 
-Store as `MERGE_BASE_RELEASE`
+Store result as `MERGE_BASE_RELEASE`
 
 **Command 4:**
 
@@ -149,27 +147,23 @@ Store as `MERGE_BASE_RELEASE`
 git merge-base HEAD main
 ```
 
-Store as `MERGE_BASE_MAIN`
+Store result as `MERGE_BASE_MAIN`
 
-**Determine recommended branch:**
-
-- Compare merge bases to current commit
-- If `MERGE_BASE_RELEASE` is closer → recommend `release`
-- If `MERGE_BASE_MAIN` is closer → recommend `main`
-- Default: `release`
+**Determine recommended target branch:**
+Compare the merge bases to decide which branch is the better comparison point. Default to `release` if unclear.
 
 <ask_followup_question>
 <question>
-Which branch do you want to compare against for this review?
+Which branch do you want to compare against?
 
-**Recommended:** {recommended_branch} (detected as your branch point)
+**Recommended:** {recommended_branch}
 
 Select target branch:
 </question>
 <options>["release (Recommended)", "main", "develop"]</options>
 </ask_followup_question>
 
-**Remove " (Recommended)" suffix and store as `TARGET_BRANCH`**
+Remove " (Recommended)" suffix from user selection and store as `TARGET_BRANCH`
 
 ---
 
@@ -177,13 +171,13 @@ Select target branch:
 
 <ask_followup_question>
 <question>
-**Current Context:**
+**Git Context:**
 
 - Current Branch: {CURRENT_BRANCH}
 - Current Commit: {CURRENT_COMMIT}
 - Target Branch: {TARGET_BRANCH}
 
-Would you like to see the list of changed files before analysis begins?
+Would you like to see the list of changed files?
 </question>
 <options>["Yes, Show Files", "No, Start Analysis"]</options>
 </ask_followup_question>
@@ -192,15 +186,17 @@ Would you like to see the list of changed files before analysis begins?
 
 ---
 
-# Step 8: Get Changed Files
+# Step 8: Get Changed Files List
 
-**Always run:**
+**Run this command:**
 
 ```
-git diff --name-only {TARGET_BRANCH}...HEAD
+git --no-pager diff --name-only {TARGET_BRANCH}...HEAD
 ```
 
-Store output as `CHANGED_FILES` list.
+**CRITICAL:** Store the complete output as `CHANGED_FILES` list. This is the ONLY list of files you will analyze in all subsequent steps.
+
+**Count the files:** Store the total count as `TOTAL_FILES`
 
 **If user selected "Yes, Show Files":**
 
@@ -208,9 +204,9 @@ Store output as `CHANGED_FILES` list.
 <question>
 **Files changed (compared to {TARGET_BRANCH}):**
 
-{List each file on new line}
+{Display each file path on a new line}
 
-**Total:** {count} files
+**Total:** {TOTAL_FILES} files
 
 Ready to begin analysis?
 </question>
@@ -219,175 +215,85 @@ Ready to begin analysis?
 
 **If user selected "No, Start Analysis":**
 
-Display: "Found {count} changed files. Starting analysis..."
+Display: "Found {TOTAL_FILES} changed files. Starting analysis..."
 
-Continue to Step 9.
-
----
-
-# Step 9: Load File Contents
-
-Read all files from `CHANGED_FILES` list and load their contents into context.
-
-**Important:**
-
-- Automatically skip files with `unfiled$` in path (email templates)
-- If a file cannot be read, skip it and note it
-- Don't stop the entire process for individual file errors
-
-**After loading:**
-
-Display: "Loaded {successfully_read}/{total} files. Skipped {skipped} files. Beginning analysis..."
+Proceed to Step 9.
 
 ---
 
-# Step 10: Deep Forward Trace Analysis
+# Step 9: Load Changed Files Content
 
-**Goal:** Verify EVERY requirement detail is implemented.
+**Read the content of files from the CHANGED_FILES list.**
 
-## 10.1: Parse Each AC into Sub-Requirements
+**Files to skip:**
 
-For each Acceptance Criteria, break it down into detailed checks.
+- Any file with `unfiled$` in the path
+- Files that cause read errors
 
-**Example AC:** "Add Priority field to Task object (Picklist: Low, Medium, High, Urgent, Default: Medium, Required)"
+**After reading, note:**
 
-**Parse into sub-requirements:**
+- Successfully read: {count}
+- Skipped: {count}
 
-1. Field Priority\_\_c exists
-2. Field type is Picklist
-3. Picklist values: Low, Medium, High, Urgent (exact match)
-4. Default value is "Medium"
-5. Field is marked as required
-
-**Example AC:** "Due Date Indicator formula shows 'Overdue' if past due, 'Due Soon' if within 3 days, 'On Track' otherwise"
-
-**Parse into sub-requirements:**
-
-1. Field Due_Date_Indicator\_\_c exists
-2. Field type is Formula (Text)
-3. Formula includes "Overdue" logic for past dates
-4. Formula includes "Due Soon" logic for within 3 days
-5. Formula includes "On Track" logic for other cases
-
-**Example AC:** "Scheduled job runs daily at 8 AM"
-
-**Parse into sub-requirements:**
-
-1. Apex Schedulable class exists
-2. Job is actually scheduled (CronTrigger exists or scheduling code present)
-3. Schedule is set to run at 8 AM daily
-
-**Do this for EVERY AC from ALL stories.**
+Display: "Loaded {successfully_read} of {TOTAL_FILES} files. Beginning analysis..."
 
 ---
 
-## 10.2: Deep Analysis of Each Sub-Requirement
+# Step 10: Forward Trace Analysis
 
-For each sub-requirement:
+**Goal:** Validate that EVERY acceptance criterion is fully implemented with DEEP analysis.
 
-**Step 1: Identify what to check**
+CRITICAL: You MUST read actual file contents. DO NOT guess based on field names.
 
-Determine file type and what property/code to verify.
+RULE: Explicitly check each word in the requirements (AC, Description and Comments) and ensure the implementation matches with proper logic.
 
-**Step 2: Read the actual file content**
+Read all acceptance criteria and comments. For each AC:
 
-For **Custom Fields** (.field-meta.xml files):
+1. Find the files that should implement it
+2. **Use `view` tool to read those files**
+3. Check if EVERYTHING in the AC is implemented exactly
+4. Mark: ✅ MET, ⚠️ PARTIAL, or ❌ MISSING
+5. Record: AC #, Story, Requirement, Status, Evidence, Gaps, Suggestions
 
-- Read the XML content
-- Extract: `<type>`, `<required>`, `<defaultValue>`, `<valueSet>`, `<formula>`
-- Verify against AC requirements
+**CRITICAL RULES:**
 
-For **Apex Classes** (.cls files):
+1. **NEVER mark as MET without reading the actual file**
+2. **NEVER assume or guess file contents**
+3. **ALWAYS use the view tool to read files**
+4. **ALWAYS document what you found vs what was required**
+5. **Be strict: only MET if EVERYTHING matches exactly**
 
-- Read the code
-- Check for specific methods, logic patterns
-- Verify business logic implementation
+**Status Guidelines:**
 
-For **Page Layouts** (.layout-meta.xml files):
-
-- Read the XML
-- Check if fields are present in `<layoutItems>`
-
-For **Custom Settings** (.object-meta.xml files):
-
-- Check if object exists
-- Check if the setting is actually USED in code (search Apex files for references)
-
-**Step 3: Mark status accurately**
-
-- ✅ **MET**: ALL sub-requirements satisfied
-- ⚠️ **PARTIAL**: Some sub-requirements satisfied, some missing
-- ❌ **MISSING**: None or very few sub-requirements satisfied
-
-**Step 4: Document evidence precisely**
-
-Record:
-
-- File path
-- Exact property found (e.g., `<required>false</required>`)
-- What's implemented vs. what's required
-- Specific gap details
-
-**Store Forward Trace results with:**
-
-- Each AC number and story ID
-- Each sub-requirement status
-- Overall AC status
-- Evidence and gaps
+- ✅ **MET**: Implementation exists AND matches ALL AC requirements exactly
+- ⚠️ **PARTIAL**: Implementation exists BUT has gaps (wrong type, wrong value, wrong operator, missing property)
+- ❌ **MISSING**: Implementation does not exist
 
 ---
 
-# Step 11: Accurate Backward Trace Analysis
+# Step 11: Backward Trace Analysis
 
-**Goal:** Find code without linked requirements.
+**Goal:** Ensure all changed code is mapped to requirements.
 
-## 11.1: For Each File in CHANGED_FILES
+**CRITICAL: Only analyze files from the CHANGED_FILES list. Do NOT scan workspace.**
 
-**Step 1: Skip metadata files automatically**
+For each file in CHANGED_FILES:
 
-- Files ending with `-meta.xml` (except custom object/field definitions)
+1. Check if it's mentioned in any requirement
+2. Check if it was used in Forward Trace
+3. Mark: ✅ MAPPED, ⚠️ UNLINKED, or ❌ GHOST
+
+**Skip these files:**
+
+- `-meta.xml` files (except `.field-meta.xml`, `.object-meta.xml`)
 - `package.xml`
+- Files in `__tests__` directory
 
-**Step 2: Check if mentioned in requirements**
+**Categories:**
 
-Search requirement file content for ANY mention of:
-
-- File name (e.g., "TaskItemPriorityHelper")
-- Field name (e.g., "Comments\_\_c")
-- Class name, method name
-- Object name (e.g., "Task_Reminder_Settings\_\_c")
-
-**Search in:**
-
-- All AC text
-- All comment text
-- Epic description
-- Story descriptions
-
-**Step 3: Check if already validated**
-
-Was this file cited as evidence in Forward Trace?
-
-**Step 4: Categorize**
-
-**Category 1: Mapped to Requirements ✅**
-
-- File was cited in Forward Trace OR
-- File is clearly mentioned in requirements
-
-**Category 2: Unlinked Business Logic ⚠️**
-
-- File implements business functionality (fields, classes, triggers, LWCs)
-- NOT mentioned anywhere in requirements
-- **Action:** Flag for Jira update
-
-**Category 3: Ghost Code ❌**
-
-- File seems completely unrelated to story theme
-- Different module/feature
-- **Action:** Remove or verify
-
-**Store Backward Trace results.**
+- ✅ **MAPPED**: File is linked to requirements
+- ⚠️ **UNLINKED**: Business logic NOT mentioned in requirements
+- ❌ **GHOST**: File from different feature/epic
 
 ---
 
@@ -395,220 +301,106 @@ Was this file cited as evidence in Forward Trace?
 
 **Goal:** Find Salesforce best practice violations.
 
-**Only analyze Apex files** (.cls, .trigger)
+**Only analyze Apex files (.cls, .trigger) from CHANGED_FILES.**
 
-## 12.1: Scan for Issues by Severity
+For each Apex file:
 
-**🔴 Critical Issues (Governor Limits):**
+1. **Use `view` tool to read the file**
+2. Scan for issues by severity
+3. Record: File, Line, Issue, Code snippet, Fix
 
-- SOQL inside `for` or `while` loops
-- DML inside loops
-- `Messaging.send` inside loops
-- Missing `with sharing` on classes with SOQL
+**Severity Levels:**
 
-**🟠 High Priority Issues:**
+🔴 **Critical** (Governor Limits/Security):
 
-- DML without try-catch
-- Custom setting exists in requirements but not checked in code
-- No bulk handling (single-record assumptions)
+- SOQL in loops
+- DML in loops
+- Missing `with sharing`
+- Wrong operators (> instead of >=)
+- Wrong thresholds (30 instead of 60)
 
-**🟡 Medium Priority Issues:**
+🟠 **High Priority**:
 
-- Missing class/method comments
-- Hardcoded strings (not in constants/labels)
-- `System.debug()` statements
-- Magic numbers
+- Missing null checks
+- No try-catch around DML
+- Not bulkified
 
-**🟢 Low Priority Issues:**
+🟡 **Medium Priority**:
+
+- Hardcoded values (should use Custom Metadata)
+- Missing ApexDoc comments
+
+🟢 **Low Priority**:
 
 - Long methods (>100 lines)
-- Inconsistent formatting
-
-## 12.2: Document Each Issue
-
-For each issue:
-
-- File and line number
-- Issue type and severity
-- Code snippet showing problem
-- Recommended fix
-
-**Store Quality results.**
+- Formatting issues
 
 ---
 
-# Step 13: Test Coverage Analysis
+# Step 13: Generate HTML Report
 
-**Goal:** Verify tests exist AND validate requirements.
+**Filename:** `{JIRA_ID}_{YYYY-MM-DD}_{HH-MM-SS}_Review.html`
 
-## 13.1: Identify Test Files
-
-From CHANGED_FILES:
-
-- Test classes: Files with "Test" in name or @isTest
-- Testable components: Apex classes/triggers (excluding tests)
-
-## 13.2: Check Test Existence
-
-For each testable component:
-
-- Does `{ClassName}Test.cls` exist?
-- If NO → 0% coverage
-
-## 13.3: Map Tests to ACs
-
-For each AC:
-
-**Identify required test scenarios:**
-
-- Positive: Happy path works
-- Negative: Handles invalid input
-- Edge cases: Nulls, empty, boundary values
-- Bulk: 200+ records
-
-**Search test class for methods that validate this AC:**
-
-- Look for test method names
-- Read test method code
-- Check for assertions
-
-**Mark coverage:**
-
-- ✅ Covered: Positive + at least one negative/edge + bulk
-- ⚠️ Partial: Positive only
-- ❌ Not Covered: No tests found
-
-## 13.4: Check Test Quality
-
-For each test class:
-
-- Has test methods?
-- Methods have assertions?
-- Tests bulk scenarios?
-- Tests negative cases?
-
-## 13.5: Generate Test Recommendations
-
-For each gap, suggest:
-
-- Test class name to create
-- Specific test method names
-- What each should validate (which AC, which scenario)
-
-**Store Test Coverage results.**
-
----
-
-# Step 14: Generate HTML Report
-
-**Create filename:**
-
-```
-{JIRA_ID}_{YYYY-MM-DD}_{HH-MM-SS}_Review.html
-```
-
-Store as `REPORT_FILENAME`
-
-**Generate comprehensive HTML report with:**
-
-## Report Sections:
+Create one HTML file with these sections:
 
 **1. Header**
 
-- Title: "Traceability Review Report: {JIRA_ID}"
-- Metadata: Generated timestamp, Reviewer (T.R.A.C.E.), Current Branch, Target Branch, Total Files
+- Title, Date, Branch, Commit, Files count
 
 **2. Executive Summary**
 
-- Overall Status: ✅ Ready / ⚠️ Needs Work / ❌ Blocked
-- Quick stats from all 4 analyses
-- Top critical issues
+- Summary cards with counts (MET/PARTIAL/MISSING/CRITICAL/HIGH)
+- Overall status
+- Top 5 critical issues list
 
-**3. Forward Trace Analysis**
+**3. Forward Trace**
 
-- Summary cards (Total, Met, Partial, Missing)
-- Table for EACH story's ACs:
-  - AC #, Story ID, Requirement, Status, Evidence, Gap Details
-- Extended Requirements table (comments)
-- List all sub-requirements for partial ACs
+- Summary cards
+- Table with ALL ACs: AC #, Story, Requirement, Status, Evidence, Gaps, Suggestions
 
-**4. Backward Trace Analysis**
+**4. Backward Trace**
 
-- Summary cards (Mapped, Unlinked, Ghost Code)
-- Mapped list (with AC references)
-- Unlinked table (file, type, logic, action required)
-- Ghost code alert (if any)
+- Summary cards
+- Mapped files list
+- Unlinked table (if any)
+- Ghost code alerts (if any)
 
-**5. Code Quality Analysis**
+**5. Code Quality**
 
 - Summary cards by severity
-- Critical issues table (red alert)
-- High issues table (orange warning)
-- Medium issues table (yellow caution)
-- Low issues list
-- Quality verdict
+- Tables for Critical/High/Medium issues
+- List for Low issues
 
-**6. Test Coverage Analysis**
+**6. Files Analyzed**
 
-- Summary cards (Code %, Requirement %, Scenario %)
-- Requirement-based coverage table
-- Test quality issues
-- Recommended test methods (grouped by component)
-- Test verdict
+- Total count
+- Successfully analyzed count
+- Collapsible list of all files
 
-**7. Files Analyzed**
+Use professional styling with colored badges and cards.
 
-- Total files
-- Successfully analyzed
-- Skipped (with reasons)
-- Complete file list
+**Save to:** `docs/reviews/{REPORT_FILENAME}`
 
-**8. Footer**
+**Then open in browser:**
 
-- "Report generated by T.R.A.C.E."
-
-**Styling:**
-
-- Professional, modern design
-- Color-coded badges and sections
-- Responsive tables
-- Clear visual hierarchy
-
-**Save report to:** `docs/reviews/{REPORT_FILENAME}`
-
----
-
-# Step 15: Open Report and Complete
-
-**Open report in browser:**
-
-```
+```bash
 start docs/reviews/{REPORT_FILENAME}
 ```
 
 **Display completion message:**
 
 ```
-✅ **Analysis Complete!**
+✅ Analysis Complete!
 
-**Report:** `docs/reviews/{REPORT_FILENAME}`
+Report: docs/reviews/{REPORT_FILENAME}
 
-**Summary:**
-- Forward Trace: {Met}/{Total} requirements met ({Partial} partial)
-- Backward Trace: {Unlinked} unlinked components
-- Code Quality: {Critical} critical, {High} high issues
-- Test Coverage: {AC_Coverage}% requirement coverage
+Summary:
+- Forward Trace: {MET}/{TOTAL} met ({PARTIAL} partial, {MISSING} missing)
+- Backward Trace: {MAPPED} mapped, {UNLINKED} unlinked
+- Code Quality: {CRITICAL} critical, {HIGH} high issues
 
-{If blockers:}
-❌ **BLOCKERS:** {count} critical issues must be fixed
-
-The report has been opened in your browser.
-
-Analysis complete. Workflow ended.
+{If critical issues:}
+❌ BLOCKERS: {count} critical issues must be fixed
 ```
-
-**STOP. End workflow.**
-
----
 
 # END OF WORKFLOW
